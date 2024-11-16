@@ -22,3 +22,9 @@ jobs:
         run: npm run build
       - name: Run tests
         run: npm run test
+
+      # Playwright will run the production server and run the e2e tests
+      # the build should be available before running the tests
+      - run: npx playwright install --with-deps
+      - name: Run e2e tests with Playwright
+        run: npm run test:e2e
