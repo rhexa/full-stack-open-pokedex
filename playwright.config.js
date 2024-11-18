@@ -8,7 +8,7 @@ module.exports = {
   /* Reporters */
   reporter: [['list']],
   webServer: {
-    command: 'npm run start-prod',
+    command: 'npm run start',
     url: 'http://localhost:5000',
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',
