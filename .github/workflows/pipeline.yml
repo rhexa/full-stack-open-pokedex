@@ -8,6 +8,9 @@ on:
     branches: [main]
     types: [opened, synchronize]
 
+env:
+  SKIP_DEPLOYMENT: ${{ contains(toJSON(github.event.commits[*].message), '#skip') || github.event_name != 'push' }}
+
 jobs:
 
   simple_deployment_pipeline:
@@ -34,9 +37,9 @@ jobs:
       
       # Deploy to Fly.io
       - uses: superfly/flyctl-actions/setup-flyctl@master
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ env.SKIP_DEPLOYMENT == 'false' }}
       - run: flyctl deploy --remote-only
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ env.SKIP_DEPLOYMENT == 'false' }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -45,7 +48,7 @@ jobs:
     runs-on: ubuntu-20.04
     permissions:
       contents: write
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ contains(toJSON(github.event.commits[*].message), '#skip') || github.event_name != 'push' }}
     steps:
     - uses: actions/checkout@v4
       with:
