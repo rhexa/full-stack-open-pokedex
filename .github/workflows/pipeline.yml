@@ -15,6 +15,8 @@ jobs:
 
   simple_deployment_pipeline:
     runs-on: ubuntu-20.04
+    outputs:
+      deploy_url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,7 +40,11 @@ jobs:
       # Deploy to Fly.io
       - uses: superfly/flyctl-actions/setup-flyctl@master
         if: ${{ env.SKIP_DEPLOYMENT == 'false' }}
-      - run: flyctl deploy --remote-only
+      - name: Deploy to fly-io
+        id: deploy
+        run: |
+          flyctl deploy --remote-only | tee output.log
+          echo "url=$(cat output.log | grep -oP '(?<=Visit your newly deployed app at ).*')" >> $GITHUB_OUTPUT
         if: ${{ env.SKIP_DEPLOYMENT == 'false' }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -48,7 +54,7 @@ jobs:
     runs-on: ubuntu-20.04
     permissions:
       contents: write
-    if: ${{ contains(toJSON(github.event.commits[*].message), '#skip') || github.event_name != 'push' }}
+    if: ${{ !(contains(toJSON(github.event.commits[*].message), '#skip') || github.event_name != 'push') }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -58,3 +64,30 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DEFAULT_BUMP: patch
+
+  notify_discord:
+    needs: simple_deployment_pipeline
+    if: ${{ !cancelled() && !(contains(toJSON(github.event.commits[*].message), '#skip') || github.event_name != 'push') }}
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Notify on success
+        uses: tsickert/discord-webhook@v5.3.0
+        if: success()
+        with:
+          embed-color: 6144854
+          username: Github Actions
+          content: A new version of Pokedex has been deployed
+          embed-description: "URL: ${{ needs.simple_deployment_pipeline.outputs.deploy_url }}"
+          embed-author-name: "by ${{ github.actor }}"
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: Notify on failure
+        if: failure()
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          embed-color: 14701393
+          content: Pokedex build failed
+          embed-description: "Last commit: ${{ github.event.head_commit.url }} didn't pass the build checks"
+          embed-author-name: "by ${{ github.event.head_commit.author.name }}"
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+
+  
