@@ -2,8 +2,8 @@ name: Health Check Pipeline
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '*/5 * * * *' # Run every 5 minutes
+  # schedule:
+  #   - cron: '*/5 * * * *' # Run every 5 minutes
 
 env:
   URL: https://app-red-violet-9766.fly.dev
